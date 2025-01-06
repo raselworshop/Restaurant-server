@@ -32,16 +32,46 @@ async function run() {
     const reviewsCollection = client.db('Bistro_BOSS').collection('reviews')
     const cartsCollection = client.db('Bistro_BOSS').collection('carts')
 
+    // user related 
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result)
+    })
     app.post('/users', async (req, res) => {
       const user = req.body;
       console.log(user)
+      const query = { email: user.email}
+      // check if user already exist i db it can be done many ways (1. unique email, 2. upsert, 3. simple checking)
+      const isExist = await usersCollection.findOne(query)
+      if(isExist){
+       return res.send({ message: "User alredy exist", insertedId: null })
+      }
       const result = await usersCollection.insertOne(user);
       res.send(result)
     })
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updateDoc= {
+        $set:{
+          role: 'admin'
+        }
+      }
+      const result = await usersCollection.updateOne(filter, updateDoc)
+      res.send(result)
+    })
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await usersCollection.deleteOne(query)
+      res.send(result)
+    })
+    // all items 
     app.get('/menu', async (req, res) => {
         const result =  await menuCollection.find().toArray();
         res.send(result)
     })
+    // reviews related 
     app.get('/reviews', async (req, res) => {
         const result =  await reviewsCollection.find().toArray();
         res.send(result)
