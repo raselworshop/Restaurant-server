@@ -116,7 +116,7 @@ async function run() {
       const result = await menuCollection.find().toArray();
       res.send(result)
     })
-    // final recheck nedd to perform 
+    // final recheck nedd to perform: done
     app.get('/menu/:id', async (req, res) => {
       const id = req.params.id;
       console.log('Received ID:', id);
@@ -137,6 +137,22 @@ async function run() {
     app.post('/menu', tokenVerify, verifyAdmin, async (req, res) => {
       const item = req.body;
       const result = await menuCollection.insertOne(item)
+      res.send(result)
+    })
+    app.patch('/menu/:id', async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter= {_id: new ObjectId(id)}
+      const updateDoc={
+        $set:{
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          recipe: item.recipe,
+          image: item.image,
+        }
+      }
+      const result = await menuCollection.updateOne(filter, updateDoc)
       res.send(result)
     })
     app.delete('/menu/:id', tokenVerify, verifyAdmin, async (req, res) => {
