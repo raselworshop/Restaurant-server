@@ -222,6 +222,16 @@ async function run() {
       res.send({paymentResult, deletResult})
     })
 
+    // saved payment history get in ui 
+    app.get("/payments/:email", tokenVerify, async (req, res) => {
+      const query = {email: req.params.email}
+      if(req.params.email !== req.user.email){
+        return res.status(403).send({message: "Access forbidden!"})
+      }
+      const result = await paymentsCollection.find(query).toArray();
+      res.send(result)
+    })
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
