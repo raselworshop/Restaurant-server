@@ -135,7 +135,7 @@ async function run() {
         res.status(500).send({ message: 'Error retrieving item' });
       }
     });
-       
+
     app.post('/menu', tokenVerify, verifyAdmin, async (req, res) => {
       const item = req.body;
       const result = await menuCollection.insertOne(item)
@@ -144,9 +144,9 @@ async function run() {
     app.patch('/menu/:id', async (req, res) => {
       const item = req.body;
       const id = req.params.id;
-      const filter= {_id: new ObjectId(id)}
-      const updateDoc={
-        $set:{
+      const filter = { _id: new ObjectId(id) }
+      const updateDoc = {
+        $set: {
           name: item.name,
           category: item.category,
           price: item.price,
@@ -201,7 +201,7 @@ async function run() {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: 'usd',
-        "payment_method_types":[ "card" ]
+        "payment_method_types": ["card"]
       });
       res.send({
         clientSecret: paymentIntent.client_secret
@@ -211,22 +211,92 @@ async function run() {
     // save payments data in db 
     app.post('/payments', async (req, res) => {
       const payment = req.body;
-      console.log("Saved Payment db: ",payment)
-      const paymentResult= await paymentsCollection.insertOne(payment)
+      console.log("Saved Payment db: ", payment)
+      const paymentResult = await paymentsCollection.insertOne(payment)
 
       //carefully delete item from the cart in db
-      const query = {_id:{
-        $in: payment.cartIds.map(id=> new ObjectId(id))
-      }}
+      const query = {
+        _id: {
+          $in: payment.cartIds.map(id => new ObjectId(id))
+        }
+      }
       const deletResult = await cartsCollection.deleteMany(query)
-      res.send({paymentResult, deletResult})
+      res.send({ paymentResult, deletResult })
+    })
+
+    //analytics
+    app.get('/admin-stats', tokenVerify, verifyAdmin, async (req, res) => {
+      const users = await usersCollection.estimatedDocumentCount();
+      const menuItems = await menuCollection.estimatedDocumentCount();
+      const orders = await paymentsCollection.estimatedDocumentCount();
+
+      // not a best practice
+      // const payments = await paymentsCollection.find().toArray();
+      // const revenue = payments.reduce((total, payment)=> total + payment.price, 0)
+      const result = await paymentsCollection.aggregate([
+        {
+          $group:{
+            _id:null,
+            totalRevenue: {
+              $sum: "$price"
+            }
+          }
+        }
+      ]).toArray();
+
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+      // console.log("Total Revenue:", result[0]?.totalRevenue || 0);
+
+      res.send({
+        users,
+        menuItems,
+        orders,
+        revenue
+      })
+    })
+
+    // use aggregate pipeline to get product based analytic
+    app.get('/order-stats', tokenVerify, verifyAdmin, async (req, res) => {
+      const result = await paymentsCollection.aggregate([
+        {
+          $unwind: "$menuItemIds"
+        },
+        {
+          $lookup:{
+            from: 'menu',
+            localField: 'menuItemIds',
+            foreignField: "_id",
+            as: 'menuItems'
+          }
+        },
+        {
+          $unwind: '$menuItems'
+        },
+        {
+          $group:{
+            _id: "$menuItems.category",
+            quantity:{ $sum: 1 },
+            revenue : { $sum: "$menuItems.price"}
+          }
+        },
+        {
+          $project:{
+            _id: 0,
+            category: "$_id",
+            quantity: "$quantity",
+            revenue: "$revenue"
+          }
+        }
+      ]).toArray();
+      
+      res.send(result)
     })
 
     // saved payment history get in ui 
     app.get("/payments/:email", tokenVerify, async (req, res) => {
-      const query = {email: req.params.email}
-      if(req.params.email !== req.user.email){
-        return res.status(403).send({message: "Access forbidden!"})
+      const query = { email: req.params.email }
+      if (req.params.email !== req.user.email) {
+        return res.status(403).send({ message: "Access forbidden!" })
       }
       const result = await paymentsCollection.find(query).toArray();
       res.send(result)
