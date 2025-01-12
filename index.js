@@ -27,7 +27,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const usersCollection = client.db('Bistro_BOSS').collection('users')
     const menuCollection = client.db('Bistro_BOSS').collection('menu')
@@ -42,7 +42,7 @@ async function run() {
       res.send({ token })
     })
     const tokenVerify = (req, res, next) => {
-      console.log("inside tokenVerify", req.headers.authorization)
+      // console.log("inside tokenVerify", req.headers.authorization)
       if (!req.headers.authorization) {
         return res.status(403).send({ message: "Access forbidden" })
       }
@@ -86,7 +86,7 @@ async function run() {
     })
     app.post('/users', async (req, res) => {
       const user = req.body;
-      console.log(user)
+      // console.log(user)
       const query = { email: user.email }
       // check if user already exist i db it can be done many ways (1. unique email, 2. upsert, 3. simple checking)
       const isExist = await usersCollection.findOne(query)
@@ -121,17 +121,17 @@ async function run() {
     // final recheck nedd to perform: done
     app.get('/menu/:id', async (req, res) => {
       const id = req.params.id;
-      console.log('Received ID:', id);
+      // console.log('Received ID:', id);
       try {
         const filter = { _id: new ObjectId(id) };
         const result = await menuCollection.findOne(filter);
-        console.log('Data retrieved from database:', result);
+        // console.log('Data retrieved from database:', result);
         if (!result) {
           return res.status(404).send({ message: 'Item not found' });
         }
         res.send(result);
       } catch (error) {
-        console.error('Error retrieving item:', error);
+        // console.error('Error retrieving item:', error);
         res.status(500).send({ message: 'Error retrieving item' });
       }
     });
@@ -158,11 +158,11 @@ async function run() {
       res.send(result)
     })
     app.delete('/menu/:id', tokenVerify, verifyAdmin, async (req, res) => {
-      console.log("Token Verified:", req.user);
+      // console.log("Token Verified:", req.user);
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      console.log("ID received in backend:", id);
-      console.log("Query being used:", query);
+      // console.log("ID received in backend:", id);
+      // console.log("Query being used:", query);
 
       const result = await menuCollection.deleteOne(query);
       res.send(result)
@@ -196,7 +196,7 @@ async function run() {
     app.post('/create-checkout-session', async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100)
-      console.log("inside intent amount", amount)
+      // console.log("inside intent amount", amount)
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -211,7 +211,7 @@ async function run() {
     // save payments data in db 
     app.post('/payments', async (req, res) => {
       const payment = req.body;
-      console.log("Saved Payment db: ", payment)
+      // console.log("Saved Payment db: ", payment)
       const paymentResult = await paymentsCollection.insertOne(payment)
 
       //carefully delete item from the cart in db
@@ -304,8 +304,8 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
